@@ -5,6 +5,7 @@ import cors from "cors"
 import { PrismaClient } from "./generated/prisma/client.ts"
 import dotenv from "dotenv";
 import { authenticate } from "./middleware/auth.js"
+import axios from "axios"
 
 dotenv.config();
 const app = express();
@@ -89,6 +90,40 @@ app.post("/api/login", async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ error: "Server error", details: err.message });
+  }
+});
+
+const SPOTIFY_API_KEY = 'f4e218c6bcmshc2360d8f6e46b82p15386ajsn2968d88e6eb8'
+const YOUTUBE_KEY = 'AIzaSyAF6oLkEGmVLD-tZeMSd4O_oQp2XRRgYOM'
+
+app.get("/api/search" , async (req,res)=>{
+  const {q} = req.query;
+    try{  
+      const response = await axios.get("https://spotify23.p.rapidapi.com/search/", {
+        params: {q , type: "tracks"},
+        headers: {
+          "X-RapidAPI-Key": SPOTIFY_API_KEY,
+          "X-RapidAPI-Host": "spotify23.p.rapidapi.com",
+        },  
+      });
+      res.json(response.data.tracks.items[0].data);
+
+    }catch(err){
+      console.log(err);
+      res.status(500).json({error : err.message});
+    }
+});
+
+app.get("/api/playback" , async (req,res)=>{
+  const {q} = req.query;
+  try{
+    const ytResponse = await axios.get("https://www.googleapis.com/youtube/v3/search", {
+      params: {part: "snippet" , q, key: YOUTUBE_KEY , maxResults: 1, type: "video"},
+    });
+    res.json({videoId: ytResponse.data.items[0].id.videoId});
+  }catch(err){
+    console.log(err);
+    res.status(500).json({error : err.message});
   }
 });
 
