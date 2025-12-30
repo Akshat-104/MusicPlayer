@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
-import backupCover from "../../images/Spotify_logo_without_text.svg.png"
+import "@tailwindplus/elements";
+import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
+import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import {
   PlayIcon,
   PauseIcon,
@@ -10,20 +12,22 @@ import {
   ArrowPathIcon,
   HeartIcon,
   ArrowPathRoundedSquareIcon,
+  PlusIcon,
+  MagnifyingGlassIcon,
 } from "@heroicons/react/24/solid";
+import { useNavigate } from "react-router-dom";
 
 const DashBoard = () => {
   const inputRef = useRef(null);
-
+  const navigate = useNavigate();
   // Results and active track
-  const [results, setResults] = useState("");
-  const [artistFilter, setArtistFilter] = useState(null);
-  const [queue, setQueue] = useState([]);
+  const [results, setResults] = useState([]);
   const [activeVideo, setActiveVideo] = useState(null);
   const [activeSnippet, setActiveSnippet] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(null);
   const [favourites, setFavourites] = useState([]);
   const [isLooping , setIsLooping] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // Player state
   const [showPopup, setShowPopup] = useState(false);
@@ -208,32 +212,30 @@ const handleStateChange = (event)=>{
 
   // Search tracks
   const handleSearch = async () => {
-    const query = inputRef.current.value.trim();
-    if (!query) return;
+  const query = inputRef.current.value.trim();
+  if (!query) return;
 
-    try {
-      const spotifyRes = await fetch(`http://localhost:4444/api/search?q=${encodeURIComponent(query)}`)
-      const track = await spotifyRes.json();
-      setActiveSnippet(track);
-      const ytRes = await fetch(`http://localhost:4444/api/playback?q=${encodeURIComponent(query)}`)
-      const items = await ytRes.json();
-      setResults(items);
-      // Reset player state
-      setActiveVideo(null);
-      setShowPopup(false);
-      setIsPlaying(false);
-      setProgress(0);
-      setTime(0);
-      setDuration(0);
-      setCurrentIndex(0);
-    } catch (err) {
-      console.error("Error fetching videos:", err);
-    }
-  };
+  setLoading(true);
+  try {
+    // Get metadata from Spotify
+    const spotifyRes = await fetch(`http://localhost:4444/api/search?q=${encodeURIComponent(query)}`);
+    const track = await spotifyRes.json();
+    setActiveSnippet(track);
 
-const addToQueue = (videoId) => {
-  setQueue(prev => Array.isArray(prev) ? [...prev, videoId] : [videoId]);
+    // Get videoIds from YouTube
+    const ytRes = await fetch(`http://localhost:4444/api/playback?q=${encodeURIComponent(query)}`);
+    const items = await ytRes.json(); // ["abc123", "xyz456"]
+    setResults(items);
+    setCurrentIndex(0);
+    setActiveVideo(items[0]); // first videoId
+    setActiveSnippet(track);
+  } catch (err) {
+    console.error("Error fetching videos:", err);
+  } finally {
+    setLoading(false);
+  }
 };
+
   // Open popup with selected track
   const openPopup = (videoId) => {
     setActiveVideo(videoId);
@@ -243,8 +245,6 @@ const addToQueue = (videoId) => {
     setProgress(0);
     setTime(0);
     setDuration(0);
-    const artistName = activeSnippet?.artists?.items[0]?.profile?.name;
-  if (artistName) setArtistFilter(artistName.toLowerCase());
     if(playerRef.current){
       playerRef.current.seekTo(0);
       playerRef.current.playVideo();
@@ -291,36 +291,32 @@ const addToQueue = (videoId) => {
   const skipNext = () => {
   if (currentIndex === null || queue.length === 0) return;
 
-  // If looping, replay current
   if (isLooping) {
-    openPopup(queue[currentIndex].id.videoId);
+    openPopup(queue[currentIndex]); // ✅ queue[currentIndex] is a string
     return;
   }
 
-  // Move to next track if available
   if (currentIndex < queue.length - 1) {
     const nextIndex = currentIndex + 1;
-    const video = queue[nextIndex];
+    const videoId = queue[nextIndex]; // ✅ directly use string
     setCurrentIndex(nextIndex);
-    setActiveVideo(video.id.videoId);
-    setActiveSnippet(video.snippet);
-    openPopup(video.id.videoId); // ✅ only videoId
+    setActiveVideo(videoId);
+    openPopup(videoId);
   }
 };
-
 
 const skipPrevious = () => {
   if (currentIndex === null || queue.length === 0) return;
 
   if (currentIndex > 0) {
     const prevIndex = currentIndex - 1;
-    const video = queue[prevIndex];
+    const videoId = queue[prevIndex]; // ✅ directly use string
     setCurrentIndex(prevIndex);
-    setActiveVideo(video.id.videoId);
-    setActiveSnippet(video.snippet);
-    openPopup(video.id.videoId);
+    setActiveVideo(videoId);
+    openPopup(videoId);
   }
 };
+
 
   // Formatting helpers
   const formatTime = (seconds) => {
@@ -343,68 +339,127 @@ const skipPrevious = () => {
   return (
     <div className="bg-neutral-900 min-h-screen flex justify-center items-center">
       {/* Main card */}
-      <div className="bg-white max-w-md w-full rounded-xl shadow-lg p-10">
-        <h2 className="text-center font-bold text-2xl text-black mb-4">
+      <div className="relative bg-white max-w-md w-full rounded-xl shadow-lg p-10">
+          <Menu as="div" className="inline-block absolute top-2 right-2">
+      <MenuButton className="inline-flex justify-center gap-x-1.5 rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs inset-ring-1 inset-ring-gray-300 hover:bg-gray-50">
+        My Profile
+        <ChevronDownIcon aria-hidden="true" className="-mr-1 size-5 text-gray-400" />
+      </MenuButton>
+
+      <MenuItems
+        transition
+        className="absolute right-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg outline-1 outline-black/5 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
+      >
+        <div className="py-1">
+          <MenuItem>
+            <a
+              href="#"
+              className="block px-4 py-2 text-sm text-gray-700 data-focus:bg-gray-100 data-focus:text-gray-900 data-focus:outline-hidden"
+            >
+              Account settings
+            </a>
+          </MenuItem>
+          <MenuItem>
+            <a
+              href="#"
+              className="block px-4 py-2 text-sm text-gray-700 data-focus:bg-gray-100 data-focus:text-gray-900 data-focus:outline-hidden"
+            >
+              Support
+            </a>
+          </MenuItem>
+          <MenuItem>
+            <a
+              href="#"
+              className="block px-4 py-2 text-sm text-gray-700 data-focus:bg-gray-100 data-focus:text-gray-900 data-focus:outline-hidden"
+            >
+              License
+            </a>
+          </MenuItem>
+          <form action="#" method="POST">
+            <MenuItem>
+              <button
+                type="submit"
+                className="block w-full px-4 py-2 text-left text-sm text-gray-700 data-focus:bg-gray-100 data-focus:text-gray-900 data-focus:outline-hidden"
+              >
+                Sign out
+              </button>
+            </MenuItem>
+          </form>
+        </div>
+      </MenuItems>
+    </Menu>
+        <div>
+          <h2 className="text-center font-bold text-2xl text-black mb-4">
           MusicPlayer
         </h2>
+        </div>
 
         {/* Search Bar */}
-        <div className="relative w-full">
+        <div className="w-full mt-4">
+        <div className="flex items-center w-full space-x-2">
           <input
-            type="text"
-            ref={inputRef}
-            placeholder="Search Song..."
-            className="w-full pl-4 pr-28 py-2 border border-gray-300 rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition duration-200"
-          />
-          <button
-            onClick={handleSearch}
-            className="absolute top-1/2 right-2 -translate-y-1/2 bg-green-600 text-white px-5 py-1.5 rounded-full font-medium shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-200"
-          >
-            Search
-          </button>
+    type="text"
+    ref={inputRef}
+    placeholder="Search Song..."
+    className="flex-grow pl-4 py-2 border border-gray-300 rounded-full shadow-sm 
+               focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent 
+               transition duration-200"
+  />
+          <div className="flex space-x-2">
+    {/* Search Button */}
+    <button
+      onClick={handleSearch}
+      className="flex items-center justify-center px-4 py-2 rounded-full 
+                 bg-green-600 text-white shadow-md 
+                 hover:bg-green-700 transition duration-200"
+      title="Search"
+    >
+      <MagnifyingGlassIcon className="w-5 h-5 mr-1" />
+      Search
+    </button>
+
+    {/* Create Playlist Button */}
+    <button
+      onClick={() => navigate("/createplaylist")}
+      className="flex items-center justify-center w-10 h-10 rounded-full 
+                 bg-blue-600 text-white shadow-md 
+                 hover:bg-blue-700 hover:scale-105 
+                 transition-transform duration-200 cursor-pointer"
+      title="Create a New Playlist"
+    >
+      <PlusIcon className="w-5 h-5" />
+    </button>
+  </div>
+</div>
+{/* Loading indicator */}
+{loading && (
+  <p className="mt-2 text-sm text-gray-500 animate-pulse">Loading...</p>
+)}
+
+{/* Search Results */}
+{results && Array.isArray(results) && results.length > 0 && (
+  <div className="mt-6">
+    <h3 className="text-lg font-semibold text-gray-800 mb-3">Search Results</h3>
+    <ul className="space-y-3">
+      {results.map((videoId, index) => (
+        <li
+          key={index}
+          className="flex items-center justify-between p-3 rounded-lg bg-gray-100 hover:bg-gray-200 transition"
+        >
+          {/* Show videoId or Spotify metadata */}
+          <div>
+            <p className="font-medium text-gray-900">Video ID: {videoId}</p>
+            <p className="text-sm text-gray-500">
+              {activeSnippet?.title || "Unknown Title"} – {activeSnippet?.artists?.items[0]?.profile?.name || "Unknown Artist"}
+            </p>
+          </div>
+        </li>
+      ))}
+    </ul>
+  </div>
+)}
         </div>
         <div className="p-4">
-      <button
-        onClick={handleToggle}
-        className="px-4 py-2 rounded-lg bg-blue-600 text-white shadow hover:bg-blue-700 transition ml-24"
-      >
-        {showFavs ? "Hide Favourites" : "Show Favourites"}
-      </button>
-
-      {showFavs && (
-        <div className="mt-4">
-          <ul className="space-y-4">
-            {favourites.length === 0 ? (
-              <p>No favourites yet.</p>
-            ) : (
-              favourites.map((fav, index) => (
-                <li
-                  key={fav.id}
-                  className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-100 transition"
-                >
-                  <div className="flex items-center space-x-4">
-                    <img
-                      src={fav.thumbnail}
-                      alt={fav.title}
-                      className="w-20 h-20 rounded-lg shadow"
-                    />
-                    <div>
-                      <p className="font-semibold">{fav.title}</p>
-                      <p className="text-sm text-gray-500">{fav.channel}</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => openPopup(fav.videoId)}
-                    className="px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-                  >
-                    Play
-                  </button>
-                </li>
-              ))
-            )}
-          </ul>
-        </div>
-      )}
     </div>
 
         {/* Results */}
@@ -432,9 +487,10 @@ const skipPrevious = () => {
     </li>
   )}
 </ul>
-
           <div className="flex justify-center items-center">
-            <button className="px-6 py-2 rounded-lg text-white bg-blue-600 shadow hover:bg-blue-700 transition mt-5" onClick={handleClear}>Clear Results</button>
+            {results.length > 0 && (
+              <button className="px-6 py-2 rounded-lg text-white bg-blue-600 shadow hover:bg-blue-700 transition mt-5" onClick={handleClear}>Clear Results</button>
+            )}
           </div>
       </div>
 
@@ -523,7 +579,7 @@ const skipPrevious = () => {
           {/* Forward */}
           <button
             onClick={skipNext}
-            disabled={currentIndex === null || currentIndex >= queue.length - 1}
+            disabled={currentIndex === null || queue.length <= 1 || currentIndex >= queue.length - 1}
             className={`w-12 h-12 flex items-center justify-center rounded-full shadow-lg transition ${
               currentIndex !== null && currentIndex < queue.length - 1
                 ? "bg-gray-700 hover:bg-gray-600 text-white"

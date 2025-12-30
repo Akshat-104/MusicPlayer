@@ -3,6 +3,7 @@ import SignUp from "./Pages/SignUp";
 import Login from "./Pages/Login";
 import LandingPage from "./Pages/LandingPage";
 import DashBoard from "./Pages/DashBoard";
+import CreatePlaylist from "./Pages/CreatePlaylist";
 
 function App() {
   const token = localStorage.getItem("token");
@@ -13,6 +14,7 @@ function App() {
         <Route path="/login" element={<Login/>}/>
         <Route path="/" element={<LandingPage/>}/>
         <Route path="/dashboard" element={token ? <DashBoard/> : <Navigate to={"/"}/>}/>
+        <Route path="/createplaylist" element={token ? <CreatePlaylist/> : <Navigate to={"/"}/>}/>
       </Routes>
     </Router>
   );
