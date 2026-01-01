@@ -103,16 +103,14 @@ const PlaylistPage = () => {
     }
   };
 
+  const isLoopingRef = useRef(isLooping);
+  // useEffect(() => {
+  //   isLoopingRef.current = isLooping;
+  // }, [isLooping]);
+
   const handleStateChange = (event)=>{
   if (event.data === window.YT.PlayerState.ENDED) {
-    if (isLoopingRef.current) {
-      // reload same video cleanly
-      event.target.stopVideo();
-      event.target.seekTo(0);
-      event.target.playVideo(); // ensure playback starts
-    } else {
-      skipNext();
-    }
+    skipNext();
   } else if (event.data === window.YT.PlayerState.PLAYING) {
     setIsPlaying(true);
   } else if (event.data === window.YT.PlayerState.PAUSED) {
@@ -235,19 +233,26 @@ const PlaylistPage = () => {
 
   // Skip next/previous
   const skipNext = () => {
-  if (currentIndex === null || queue.length === 0) return;
+  if (idx === null) return;
 
-  if (isLooping) {
-    openPopup(queue[currentIndex]); // ✅ queue[currentIndex] is a string
-    return;
-  }
-
-  if (currentIndex < queue.length - 1) {
-    const nextIndex = currentIndex + 1;
-    const videoId = queue[nextIndex]; // ✅ directly use string
-    setCurrentIndex(nextIndex);
-    setActiveVideo(videoId);
-    openPopup(videoId);
+  if (idx < playlist.tracks.length - 1) {
+    // go to next track
+    setIdx(idx + 1);
+    const VideoId = playlist.tracks[idx + 1].track.url;
+    const videoid = getVideoIdFromUrl(VideoId);
+    setActiveVideo(videoid);
+  } else {
+    // reached end of playlist
+    if (isLooping) {
+      // loop back to first track
+      setIdx(0);
+      const videoId = playlist.tracks[idx].track.url;
+      const videoid = getVideoIdFromUrl(videoId);
+      setActiveVideo(videoid);
+    } else {
+      // stop playback
+      setIsPlaying(false);
+    }
   }
 };
 
@@ -430,9 +435,9 @@ const skipPrevious = () => {
                     {/* Forward */}
                     <button
                       onClick={skipNext}
-                      // disabled={currentIndex === null || queue.length <= 1 || currentIndex >= queue.length - 1}
+                      disabled={idx === null}
                       className={`w-12 h-12 flex items-center justify-center rounded-full shadow-lg transition ${
-                        currentIndex !== null
+                        idx !== null
                           ? "bg-gray-700 hover:bg-gray-600 text-white"
                           : "bg-gray-800 text-gray-500 cursor-not-allowed"
                       }`}
