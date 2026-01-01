@@ -579,9 +579,9 @@ const skipPrevious = () => {
           {/* Forward */}
           <button
             onClick={skipNext}
-            disabled={currentIndex === null || queue.length <= 1 || currentIndex >= queue.length - 1}
+            // disabled={currentIndex === null || queue.length <= 1 || currentIndex >= queue.length - 1}
             className={`w-12 h-12 flex items-center justify-center rounded-full shadow-lg transition ${
-              currentIndex !== null && currentIndex < queue.length - 1
+              currentIndex !== null
                 ? "bg-gray-700 hover:bg-gray-600 text-white"
                 : "bg-gray-800 text-gray-500 cursor-not-allowed"
             }`}
