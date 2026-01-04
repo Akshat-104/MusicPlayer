@@ -5,6 +5,7 @@ import cors from "cors";
 import { PrismaClient } from "./generated/prisma/client.ts";
 import dotenv from "dotenv";
 import axios from "axios";
+import { connect } from "node:http2";
 
 dotenv.config();
 const app = express();
@@ -124,6 +125,17 @@ app.post("/api/playlist", async (req, res) => {
   }
 });
 
+// Delete a Playlist
+app.delete("/api/deleteplaylist", async(req,res)=>{
+  const {id} = req.body;
+  try{
+    await prisma.playlists.delete({where: {id}});
+    res.status(200).json({message: "Playlist Deleted"});
+  }catch(err){
+    res.status(500).json({error: err.message});
+  }
+});
+
 // Get all playlists
 app.get("/api/getplaylists", async (req, res) => {
   try {
@@ -203,6 +215,95 @@ app.post("/api/tracks", async (req, res) => {
     res.status(err.response?.status || 500).json({ error: err.message });
   }
 });
+
+// ---------------- FAVOURITES ----------------
+
+// Create Favourite
+app.post("/api/createFavourite" , async (req,res)=>{
+  const { userId } = req.body;
+  try{
+    const Fav = await prisma.favourite.create({data:{userId}});
+    res.json(Fav);
+  }catch(err){
+    console.error("error: " , err);
+  }
+});
+
+// Add Track To Favourite
+app.post("/api/favourites/:id/track" , async(req,res)=>{
+    // const {Favouriteid} = req.params;
+    const { trackId, order,userId , Favouriteid} = req.body;
+  try{
+    const FavTrack = await prisma.favouriteTrack.create({data:{Favourite:{connect:{id:Number(Favouriteid)}} ,User:{connect:{id:Number(userId)}} ,track:{connect:{id:Number(trackId)}} , order}});
+    res.json(FavTrack);
+  }catch(err){
+    console.error("error: " , err);
+  }
+})
+
+// get favourite list
+app.get("/api/favourite/:id",async(req,res)=>{
+  const {id} = req.params;
+  try{
+    const favourite = await prisma.favourite.findUnique({
+      where:{id : Number(id)},
+      include:{tracks:{include:{track:true}}}
+    });
+    res.json(favourite);
+  }catch(err){
+    console.log(err);
+  }
+});
+
+// Get all tracks
+app.get("/api/alltracks",async(req,res)=>{
+  try{
+    const alltracks = await prisma.track.findMany();
+    res.json(alltracks);
+  }catch(err){
+    console.log(err);
+  }
+});
+
+// Get specific track
+app.get("/api/specificTrack",async(req,res)=>{
+  const {SongId} = req.body;
+  try{
+    const specificTrack = await prisma.track.findUnique({
+      where:{id:SongId}
+    })
+    res.json(specificTrack);
+  }catch(err){
+    console.log(err);
+  }
+})
+
+// Get all favourite
+app.get("/api/getfavourite", async (req, res) => {
+  try {
+    const favourite = await prisma.favourite.findMany({
+      include:{user:{include:{FavouriteTracks:true}}}
+    })
+    res.json(favourite);
+    
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Remove specific Track from Favourites
+app.delete("/api/favourites/:id/track/:trackId",async(req,res)=>{
+  const {Favouriteid , trackId} = req.params;
+  try{
+    await prisma.favouriteTrack.delete({
+      where:{trackId:Number(trackId) , Favouriteid:Favouriteid}
+    });
+    res.json("Deleted The Track");
+  }catch(err){
+    console.log(err);
+  }
+});
+
 // ---------------- SERVER ----------------
 
 const PORT = process.env.PORT || 4444;
