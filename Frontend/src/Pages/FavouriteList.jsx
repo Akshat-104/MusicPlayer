@@ -1,45 +1,27 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { PlusIcon } from '@heroicons/react/24/solid';
+import React from 'react'
+import { useNavigate } from 'react-router-dom';
+import { useState , useEffect } from 'react';
 import "@tailwindplus/elements";
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
 
-const CreatePlaylist = () => {
+const FavouriteList = () => {
+  const [favourites, setFavourites] = useState([]);
+  const navigate = useNavigate();
 
-    const [playlists,setPlaylists] = useState([]);
-    const [message , setMessage] = useState("");
-    const inputRef = useRef(null);
-
-    const handleCreate = async ()=>{
-        const newvalue = inputRef.current.value;
-        const userid = localStorage.getItem("userid");
-        try{
-          const response = await fetch("http://localhost:4444/api/playlist" , {
-            method:"POST",
-            headers:{"Content-Type":"application/json"},
-            body: JSON.stringify({
-              name: newvalue,
-              userId: Number(userid)
-            }),
-          });
-          const create = await response.json();
-          setPlaylists([...playlists , create]);
-        }catch (err) {
-  console.error("Error creating playlist:", err);
-}
-    }
-    const ShowPlaylist = async () => {
-  try {
-    const response = await fetch("http://localhost:4444/api/getplaylists");
-    const data = await response.json();   // parse JSON
-    console.log(data);
-    setPlaylists(data);                   // set actual array
-  } catch (err) {
-    console.log(err);
-  }
-};
-
-
+  useEffect(() => {
+      const fetchPlaylists = async () => {
+        try {
+          const response = await fetch("http://localhost:4444/api/getfavourite");
+          const data = await response.json();
+          setFavourites(data);
+        } catch (err) {
+          console.error("Error fetching playlists:", err);
+        }
+      };
+  
+      fetchPlaylists();
+    }, []);
 
   return (
     <div className='bg-neutral-900 min-h-screen flex items-center justify-center'>
@@ -57,10 +39,10 @@ const CreatePlaylist = () => {
         <div className="py-1">
           <MenuItem>
             <a
-              href="/showplaylist"
+              href="/createplaylist"
               className="block px-4 py-2 text-sm text-gray-700 data-focus:bg-gray-100 data-focus:text-gray-900 data-focus:outline-hidden"
             >
-              Show Playlists
+              Create Playlist
             </a>
           </MenuItem>
           <MenuItem>
@@ -96,40 +78,22 @@ const CreatePlaylist = () => {
           <h2 className="text-center font-bold text-2xl text-black mb-4">
           MusicPlayer
         </h2>
-        </div>
-
-
-        {/* Search Bar */}
-        <div className="w-full mt-4">
-        <div className="flex items-center w-full space-x-2">
-          <input
-    type="text"
-    ref={inputRef}
-    placeholder="Name Of Playlist"
-    className="flex-grow pl-4 py-2 border border-gray-300 rounded-full shadow-sm 
-               focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent 
-               transition duration-200"/>
-          <div className="flex space-x-2">
-    {/* Search Button */}
-    <button
-      onClick={handleCreate}
-      className="flex items-center justify-center px-4 py-2 rounded-full 
-                 bg-green-600 text-white shadow-md 
-                 hover:bg-green-700 transition duration-200 cursor-pointer">
-      Create Playlist
-    </button>
-  </div>
-</div>
-{/* Temporary message */}
-      {message && (
-        <div className="mt-2 px-3 py-1 bg-blue-100 text-blue-700 rounded">
-          {message}
-        </div>
-      )}
+        <h2 className='text-center font-bold text-2xl text-blue-600 mb-4'>Favourites</h2>
+        <ul className="mt-5 space-y-3">
+  {favourites.map((favourite) => (
+    <li
+      key={favourite.id}
+      className="p-3 border rounded-lg hover:bg-gray-100 transition flex justify-between cursor-pointer"
+      onClick={() => navigate(`/favourite/${favourite.id}`)}
+    >
+      {favourite.name}
+    </li>
+  ))}
+</ul>
         </div>
       </div>
     </div>
   )
 }
 
-export default CreatePlaylist
+export default FavouriteList

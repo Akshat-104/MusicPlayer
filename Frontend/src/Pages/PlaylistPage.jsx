@@ -13,11 +13,15 @@ import {
   PlusIcon,
   MagnifyingGlassIcon,
 } from "@heroicons/react/24/solid";
+import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
+import { ChevronDownIcon } from '@heroicons/react/20/solid'
 
 const PlaylistPage = () => {
   const { id } = useParams(); // playlist id
+  const [idCheck,setIdCheck] = useState(false);
   const [playlist, setPlaylist] = useState(null);
   const [searchResults, setSearchResults] = useState([]);
+  const [trackKey , setTrackKey] = useState(null);
   const inputRef = useRef(null);
   const [showPopup, setShowPopup] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -103,11 +107,6 @@ const PlaylistPage = () => {
     }
   };
 
-  const isLoopingRef = useRef(isLooping);
-  // useEffect(() => {
-  //   isLoopingRef.current = isLooping;
-  // }, [isLooping]);
-
   const handleStateChange = (event)=>{
   if (event.data === window.YT.PlayerState.ENDED) {
     skipNext();
@@ -183,9 +182,10 @@ const PlaylistPage = () => {
           return () => clearInterval(interval);
         }, [isPlaying, duration]);
 
-    const openPopup = (index)=>{
+    const openPopup = (index , key)=>{
       const clickedtrack = playlist.tracks[index].track.url;
       const videoid = getVideoIdFromUrl(clickedtrack);
+      setTrackKey(key);
       setActiveVideo(videoid);
       setShowPopup(true);
       setIdx(index);
@@ -231,24 +231,28 @@ const PlaylistPage = () => {
     playerRef.current?.setVolume(newVolume);
   };
 
+  useEffect(() => {
+  if (playlist && playlist.tracks && playlist.tracks[idx]) {
+    const videoUrl = playlist.tracks[idx].track.url;
+    const videoId = getVideoIdFromUrl(videoUrl);
+    setActiveVideo(videoId);
+  }
+}, [idx, playlist]);
+
+
   // Skip next/previous
   const skipNext = () => {
+    console.log(playlist);
   if (idx === null) return;
 
   if (idx < playlist.tracks.length - 1) {
     // go to next track
     setIdx(idx + 1);
-    const VideoId = playlist.tracks[idx + 1].track.url;
-    const videoid = getVideoIdFromUrl(VideoId);
-    setActiveVideo(videoid);
   } else {
     // reached end of playlist
     if (isLooping) {
       // loop back to first track
       setIdx(0);
-      const videoId = playlist.tracks[idx].track.url;
-      const videoid = getVideoIdFromUrl(videoId);
-      setActiveVideo(videoid);
     } else {
       // stop playback
       setIsPlaying(false);
@@ -257,14 +261,14 @@ const PlaylistPage = () => {
 };
 
 const skipPrevious = () => {
-  if (currentIndex === null || queue.length === 0) return;
+  if (idx === null) return;
 
-  if (currentIndex > 0) {
-    const prevIndex = currentIndex - 1;
-    const videoId = queue[prevIndex]; // ✅ directly use string
-    setCurrentIndex(prevIndex);
+  if (idx > 0) {
+    const prevIndex = idx - 1;
+    const videoUrl = playlist.tracks[idx].track.url;
+    const videoId = getVideoIdFromUrl(videoUrl);
+    setIdx(prevIndex);
     setActiveVideo(videoId);
-    openPopup(videoId);
   }
 };
 
@@ -275,11 +279,146 @@ const skipPrevious = () => {
     return `${m}:${s < 10 ? "0" : ""}${s}`;
   };
 
+  useEffect(() => {
+    const fetchFavourites = async () => {
+      const res = await fetch("http://localhost:4444/api/getfavourite");
+      const data = await res.json();
+      setFavourites(data);
+    };
+    fetchFavourites();
+  }, []);
+
+
+  const toggleFavourite = async (track)=>{
+    const favid = favourites[0].id;
+    // console.log(favourites);
+    const Id = favourites[0].id;
+    var Order = 1;
+     const res = await fetch(`http://localhost:4444/api/favourite/${favid}`);
+     const data = await res.json();
+     Order = data.tracks.length + 1;
+      await fetch(`http://localhost:4444/api/favourites/${Id}/track`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        Favouriteid: Id,
+        userId:favourites[0].userId,
+        trackId:track,
+        order:Order
+      }),
+    });
+    console.log(favourites);
+  }
+
+  useEffect(() => {
+    const check = async () => {
+      await CheckIsFav();
+      // console.log(idCheck);
+    };
+    check();
+  }, [trackKey , idCheck]);
+
+  const handleToggle = async () => {
+    // Optimistically flip UI state
+    const nextState = !idCheck;
+setIdCheck(nextState);
+    if(nextState){
+      await toggleFavourite(trackKey);
+    }
+    else{
+      const favid = favourites[0].id;
+      await fetch(`http://localhost:4444/api/favourites/${favid}/track/${trackKey}`,{
+        method:"DELETE",
+        headers:{"Content-Type":"application-json"}
+      })
+      const res = await fetch(`http://localhost:4444/api/favourite/${favid}`);
+      const data = await res.json();
+      setFavourites(data);
+    }
+    // Optionally re-check from backend if needed
+    // const fav = await CheckIsFav(trackKey);
+    // setIsFav(fav);
+  };
+
+
+
+  const CheckIsFav = async()=>{
+    const favid = favourites[0].id;
+    try{
+     const res = await fetch(`http://localhost:4444/api/favourite/${favid}`);
+     const data = await res.json();
+    //  console.log(data);
+     if(data.tracks.find((isfav)=>isfav.trackId === trackKey)){
+      setIdCheck(true);
+     }else{
+      setIdCheck(false);
+     }
+    }catch(err){
+      console.log(err);
+    }
+  }
+
   if (!playlist) return <p>Loading...</p>;
 
   return (
     <div className="bg-neutral-900 min-h-screen flex items-center justify-center">
-      <div className="bg-white max-w-md w-full rounded-xl shadow-lg p-10">
+      <div className="relative bg-white max-w-md w-full rounded-xl shadow-lg p-10">
+        <Menu as="div" className="inline-block absolute top-2 right-2">
+      <MenuButton className="inline-flex justify-center gap-x-1.5 rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs inset-ring-1 inset-ring-gray-300 hover:bg-gray-50">
+        My Profile
+        <ChevronDownIcon aria-hidden="true" className="-mr-1 size-5 text-gray-400" />
+      </MenuButton>
+
+      <MenuItems
+        transition
+        className="absolute right-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg outline-1 outline-black/5 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
+      >
+        <div className="py-1">
+          <MenuItem>
+            <a
+              href="/createplaylist"
+              className="block px-4 py-2 text-sm text-gray-700 data-focus:bg-gray-100 data-focus:text-gray-900 data-focus:outline-hidden"
+            >
+              Create Playlist
+            </a>
+          </MenuItem>
+          <MenuItem>
+            <a
+              href="/dashboard"
+              className="block px-4 py-2 text-sm text-gray-700 data-focus:bg-gray-100 data-focus:text-gray-900 data-focus:outline-hidden"
+            >
+              Dashboard
+            </a>
+          </MenuItem>
+          <MenuItem>
+            <a
+              href="/showplaylist"
+              className="block px-4 py-2 text-sm text-gray-700 data-focus:bg-gray-100 data-focus:text-gray-900 data-focus:outline-hidden"
+            >
+              Show Playlist
+            </a>
+          </MenuItem>
+          <MenuItem>
+            <a
+              href="/showFavourites"
+              className="block px-4 py-2 text-sm text-gray-700 data-focus:bg-gray-100 data-focus:text-gray-900 data-focus:outline-hidden"
+            >
+              Favourites
+            </a>
+          </MenuItem>
+          <form action="#" method="POST">
+            <MenuItem>
+              <button
+                type="submit"
+                className="block w-full px-4 py-2 text-left text-sm text-gray-700 data-focus:bg-gray-100 data-focus:text-gray-900 data-focus:outline-hidden"
+              >
+                Sign out
+              </button>
+            </MenuItem>
+          </form>
+        </div>
+      </MenuItems>
+    </Menu>
         <h2 className="text-center font-bold text-2xl text-black mb-4">
           {playlist.name}
         </h2>
@@ -307,6 +446,7 @@ const skipPrevious = () => {
             className="flex items-center justify-between border p-2 rounded mb-2"
           >
             <div className="flex items-center space-x-3">
+              {console.log(searchResults)}
               <img
                 src={track.albumOfTrack.coverArt.sources[0].url}
                 alt={track.name}
@@ -314,9 +454,9 @@ const skipPrevious = () => {
               />
               <div>
                 <p className="font-medium">{track.name}</p>
-                {/* <p className="text-sm text-gray-500">
-                  {track.artists[0].profile.name}
-                </p> */}
+                <p className="text-sm text-gray-500">
+                  {track.artists.items[0].profile.name}
+                </p>
               </div>
             </div>
             <button
@@ -335,7 +475,7 @@ const skipPrevious = () => {
             <li
               key={pt.track.id}
               className="flex items-center space-x-3 border p-2 rounded cursor-pointer transition hover:bg-gray-100"
-              onClick={()=>openPopup(index)}
+              onClick={()=>openPopup(index , pt.track.id)}
             >
               <img
                 src={pt.track.coverUrl}
@@ -409,9 +549,9 @@ const skipPrevious = () => {
                     {/* Backward */}
                     <button
                       onClick={skipPrevious}
-                      disabled={currentIndex === null || currentIndex <= 0}
+                      disabled={idx === null || idx <= 0}
                       className={`w-12 h-12 flex items-center justify-center rounded-full shadow-lg transition ${
-                        currentIndex > 0
+                        idx > 0
                           ? "bg-gray-700 hover:bg-gray-600 text-white"
                           : "bg-gray-800 text-gray-500 cursor-not-allowed"
                       }`}
@@ -447,9 +587,9 @@ const skipPrevious = () => {
           
                     {/* Favourite */}
                     <button
-                      onClick={() => toggleFavourite(activeVideo, activeSnippet)}
+                      onClick={handleToggle}
                       className={`w-10 h-10 flex items-center justify-center rounded-full shadow-lg transition ${
-                        favourites.find((fav) => fav.videoId === activeVideo)
+                        idCheck
                           ? "bg-red-500 text-white"
                           : "bg-gray-700 text-gray-300 hover:bg-gray-600"
                       }`}

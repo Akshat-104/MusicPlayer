@@ -6,6 +6,8 @@ import DashBoard from "./Pages/DashBoard";
 import CreatePlaylist from "./Pages/CreatePlaylist";
 import ShowPlaylist from "./Pages/ShowPlaylist";
 import PlaylistPage from "./Pages/PlaylistPage";
+import FavouriteList from "./Pages/FavouriteList";
+import Favourites from "./Pages/Favourites";
 
 function App() {
   const token = localStorage.getItem("token");
@@ -19,6 +21,8 @@ function App() {
         <Route path="/createplaylist" element={token ? <CreatePlaylist/> : <Navigate to={"/"}/>}/>
         <Route path="/showplaylist" element={token ? <ShowPlaylist/> : <Navigate to={"/"}/>}/>
         <Route path="/playlist/:id" element={token ? <PlaylistPage/> : <Navigate to={"/"}/>}/>
+        <Route path="/showFavourites" element={token ? <FavouriteList/> : <Navigate to={"/"}/>}/>
+        <Route path="/favourite/:id" element={token ? <Favourites/> : <Navigate to={"/"}/>}/>
       </Routes>
     </Router>
   );

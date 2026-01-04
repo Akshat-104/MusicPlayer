@@ -353,18 +353,18 @@ const skipPrevious = () => {
         <div className="py-1">
           <MenuItem>
             <a
-              href="#"
+              href="/createplaylist"
               className="block px-4 py-2 text-sm text-gray-700 data-focus:bg-gray-100 data-focus:text-gray-900 data-focus:outline-hidden"
             >
-              Account settings
+              Create Playlist
             </a>
           </MenuItem>
           <MenuItem>
             <a
-              href="#"
+              href="/showplaylist"
               className="block px-4 py-2 text-sm text-gray-700 data-focus:bg-gray-100 data-focus:text-gray-900 data-focus:outline-hidden"
             >
-              Support
+              Show Playlist
             </a>
           </MenuItem>
           <MenuItem>
@@ -416,18 +416,6 @@ const skipPrevious = () => {
     >
       <MagnifyingGlassIcon className="w-5 h-5 mr-1" />
       Search
-    </button>
-
-    {/* Create Playlist Button */}
-    <button
-      onClick={() => navigate("/createplaylist")}
-      className="flex items-center justify-center w-10 h-10 rounded-full 
-                 bg-blue-600 text-white shadow-md 
-                 hover:bg-blue-700 hover:scale-105 
-                 transition-transform duration-200 cursor-pointer"
-      title="Create a New Playlist"
-    >
-      <PlusIcon className="w-5 h-5" />
     </button>
   </div>
 </div>

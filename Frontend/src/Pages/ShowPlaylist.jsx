@@ -3,10 +3,11 @@ import "@tailwindplus/elements";
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import { useState , useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 const ShowPlaylist = () => {
      const [playlists, setPlaylists] = useState([]);
+     const navigate = useNavigate();
     useEffect(() => {
     const fetchPlaylists = async () => {
       try {
@@ -20,6 +21,25 @@ const ShowPlaylist = () => {
 
     fetchPlaylists();
   }, []);
+
+  const deletePlaylist = async (Id)=>{
+    try{
+        const response = await fetch("http://localhost:4444/api/deleteplaylist" , {
+        method:"DELETE",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          id: Id,
+        }),
+      });
+      if(response.ok){
+        setPlaylists((prev) => prev.filter((p) => p.id !== Id));
+      }else{
+        console.error("Failed to delete playlist:", await response.text());
+      }
+    }catch(err){
+      console.error("Error : ", err);
+    }
+  }
 
   return (
     <div className='bg-neutral-900 min-h-screen flex items-center justify-center'>
@@ -45,10 +65,10 @@ const ShowPlaylist = () => {
           </MenuItem>
           <MenuItem>
             <a
-              href="#"
+              href="/dashboard"
               className="block px-4 py-2 text-sm text-gray-700 data-focus:bg-gray-100 data-focus:text-gray-900 data-focus:outline-hidden"
             >
-              Support
+              Dashboard
             </a>
           </MenuItem>
           <MenuItem>
@@ -79,14 +99,19 @@ const ShowPlaylist = () => {
         <h2 className='text-center font-bold text-2xl text-blue-600 mb-4'>Playlists</h2>
         <ul className="mt-5 space-y-3">
   {playlists.map((playlist) => (
-    <li
+    <div
       key={playlist.id}
-      className="p-3 border rounded-lg cursor-pointer hover:bg-gray-100 transition"
+      className="p-3 border rounded-lg hover:bg-gray-100 transition flex justify-between"
     >
-      <Link to={`/playlist/${playlist.id}`} className="block w-full h-full">
-        {playlist.name}
-      </Link>
-    </li>
+      <button className='flex-col px-2 py-2 bg-green-600 rounded shadow-md text-white justify-between cursor-pointer' onClick={() => navigate(`/playlist/${playlist.id}`)}>{playlist.name}</button>
+      <button
+      onClick={()=> deletePlaylist(playlist.id)}
+      className="flex-col justify-between px-2 py-2 rounded-full 
+                 bg-green-600 text-white shadow-md 
+                 hover:bg-green-700 transition duration-200 cursor-pointer">
+      Delete Playlist
+    </button>
+    </div>
   ))}
 </ul>
 
