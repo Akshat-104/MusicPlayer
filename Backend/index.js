@@ -71,6 +71,11 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
+// Sign Out
+app.use("/api/signout" , async(req,res)=>{
+  res.status(200).json({message:"SignOut Successfully!"})
+});
+
 // ---------------- SPOTIFY + YOUTUBE ----------------
 
 const SPOTIFY_API_KEY = process.env.SPOTIFY_API_KEY;
