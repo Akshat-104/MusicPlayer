@@ -359,6 +359,15 @@ setIdCheck(nextState);
   }
 
   if (!playlist) return <p>Loading...</p>;
+  const handleSignOut = async(req,res)=>{
+    await fetch(`http://localhost:4444/api/signout` , {
+      method:"POST"
+    })
+    localStorage.removeItem("token");
+    localStorage.removeItem("userid");
+    localStorage.removeItem("userName");
+    navigate("/");
+  }
 
   return (
     <div className="bg-neutral-900 min-h-screen flex items-center justify-center">
@@ -406,9 +415,10 @@ setIdCheck(nextState);
               Favourites
             </a>
           </MenuItem>
-          <form action="#" method="POST">
+          <form>
             <MenuItem>
               <button
+              onClick={handleSignOut}
                 type="submit"
                 className="block w-full px-4 py-2 text-left text-sm text-gray-700 data-focus:bg-gray-100 data-focus:text-gray-900 data-focus:outline-hidden"
               >

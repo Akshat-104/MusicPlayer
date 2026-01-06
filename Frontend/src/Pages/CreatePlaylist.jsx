@@ -3,12 +3,14 @@ import { PlusIcon } from '@heroicons/react/24/solid';
 import "@tailwindplus/elements";
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
+import { useNavigate } from 'react-router-dom';
 
 const CreatePlaylist = () => {
 
     const [playlists,setPlaylists] = useState([]);
     const [message , setMessage] = useState("");
     const inputRef = useRef(null);
+    const navigate = useNavigate();
 
     const handleCreate = async ()=>{
         const newvalue = inputRef.current.value;
@@ -38,6 +40,16 @@ const CreatePlaylist = () => {
     console.log(err);
   }
 };
+
+  const handleSignOut = async(req,res)=>{
+    await fetch(`http://localhost:4444/api/signout` , {
+      method:"POST"
+    })
+    localStorage.removeItem("token");
+    localStorage.removeItem("userid");
+    localStorage.removeItem("userName");
+    navigate("/");
+  }
 
 
 
@@ -73,15 +85,16 @@ const CreatePlaylist = () => {
           </MenuItem>
           <MenuItem>
             <a
-              href="#"
+              href="/showFavourites"
               className="block px-4 py-2 text-sm text-gray-700 data-focus:bg-gray-100 data-focus:text-gray-900 data-focus:outline-hidden"
             >
-              License
+              Favourites
             </a>
           </MenuItem>
-          <form action="#" method="POST">
+          <form>
             <MenuItem>
               <button
+              onClick={handleSignOut}
                 type="submit"
                 className="block w-full px-4 py-2 text-left text-sm text-gray-700 data-focus:bg-gray-100 data-focus:text-gray-900 data-focus:outline-hidden"
               >

@@ -41,6 +41,16 @@ const ShowPlaylist = () => {
     }
   }
 
+  const handleSignOut = async(req,res)=>{
+    await fetch(`http://localhost:4444/api/signout` , {
+      method:"POST"
+    })
+    localStorage.removeItem("token");
+    localStorage.removeItem("userid");
+    localStorage.removeItem("userName");
+    navigate("/");
+  }
+
   return (
     <div className='bg-neutral-900 min-h-screen flex items-center justify-center'>
         <div className="relative bg-white max-w-md w-full rounded-xl shadow-lg p-10">
@@ -73,15 +83,16 @@ const ShowPlaylist = () => {
           </MenuItem>
           <MenuItem>
             <a
-              href="#"
+              href="/showFavourites"
               className="block px-4 py-2 text-sm text-gray-700 data-focus:bg-gray-100 data-focus:text-gray-900 data-focus:outline-hidden"
             >
-              License
+              Favourites
             </a>
           </MenuItem>
-          <form action="#" method="POST">
+          <form>
             <MenuItem>
               <button
+              onClick={handleSignOut}
                 type="submit"
                 className="block w-full px-4 py-2 text-left text-sm text-gray-700 data-focus:bg-gray-100 data-focus:text-gray-900 data-focus:outline-hidden"
               >

@@ -18,6 +18,8 @@ import {
 import { useNavigate } from "react-router-dom";
 
 const DashBoard = () => {
+  const [trackKey , setTrackKey] = useState(null);
+  const [idCheck,setIdCheck] = useState(false);
   const inputRef = useRef(null);
   const navigate = useNavigate();
   // Results and active track
@@ -28,6 +30,7 @@ const DashBoard = () => {
   const [favourites, setFavourites] = useState([]);
   const [isLooping , setIsLooping] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [dashboardSkipControl , setDashboardSkipControl] = useState(false);
 
   // Player state
   const [showPopup, setShowPopup] = useState(false);
@@ -41,41 +44,25 @@ const DashBoard = () => {
 
   const playerRef = useRef(null);
 
-  const toggleFavourite = async (videoId, snippet) => {
-  const token = localStorage.getItem("token"); // 👈 define it here
-  const userId = localStorage.getItem("userid");
-
-  if (!token) {
-    console.error("No token found. User must be logged in.");
-    return;
-  }
-
-  const exists = favourites.find((fav) => fav.videoId === videoId);
-
-  if (exists) {
-    await fetch(`http://localhost:4444/api/favourites/${videoId}`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({userId}),
+  const toggleFavourite = async (track)=>{
+    // console.log(favourites);
+    const Id = favourites[0].id;
+    var Order = 1;
+     const res = await fetch(`http://localhost:4444/api/favourite/${Id}`);
+     const data = await res.json();
+     Order = data.tracks.length + 1;
+      await fetch(`http://localhost:4444/api/favourites/${Id}/track`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        Favouriteid: Id,
+        userId:favourites[0].userId,
+        trackId:track,
+        order:Order
+      }),
     });
-    setFavourites(favourites.filter((fav) => fav.videoId !== videoId));
-  } else {
-    const res = await fetch("http://localhost:4444/api/favourites", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-      userId,
-      videoId,
-      title: snippet.title,
-      channel: snippet.channelTitle,
-      thumbnail: activeSnippet.albumOfTrack.coverArt.sources[0].url,
-    }),
-});
-
-    const fav = await res.json();
-    setFavourites([...favourites, fav]);
+    console.log(favourites);
   }
-};
 const userId = localStorage.getItem("userid");
      // fetch favourite songs
   const fetchFavourites = async () => {
@@ -237,7 +224,21 @@ const handleStateChange = (event)=>{
 };
 
   // Open popup with selected track
-  const openPopup = (videoId) => {
+  const openPopup = async (videoId , url) => {
+    console.log(results);
+    const favdata = await fetch(`http://localhost:4444/api/getfavourite`);
+    const getidfromfav = await favdata.json();
+    const userid = localStorage.getItem("userid")
+    const getfavdata = getidfromfav.find((pt)=>pt.userId === Number(userid));
+    const Favid = getfavdata.id;
+      const getData = await fetch(`http://localhost:4444/api/favourite/${Favid}`)
+      const FavData = await getData.json();
+      if(FavData.tracks.some((pt)=>pt.track.url === url)){
+        setIdCheck(true);
+      }
+      else if(FavData.tracks.some((pt)=>pt.track.url !== url)){
+        setIdCheck(false);
+      }
     setActiveVideo(videoId);
     // setActiveSnippet(snippet);
     // setCurrentIndex(index);
@@ -292,17 +293,17 @@ const handleStateChange = (event)=>{
   if (currentIndex === null || queue.length === 0) return;
 
   if (isLooping) {
-    openPopup(queue[currentIndex]); // ✅ queue[currentIndex] is a string
+    openPopup(queue[currentIndex]);
     return;
   }
 
-  if (currentIndex < queue.length - 1) {
-    const nextIndex = currentIndex + 1;
-    const videoId = queue[nextIndex]; // ✅ directly use string
-    setCurrentIndex(nextIndex);
-    setActiveVideo(videoId);
-    openPopup(videoId);
-  }
+  // if (currentIndex < queue.length - 1) {
+  //   const nextIndex = currentIndex + 1;
+  //   const videoId = queue[nextIndex]; // ✅ directly use string
+  //   setCurrentIndex(nextIndex);
+  //   setActiveVideo(videoId);
+  //   openPopup(videoId);
+  // }
 };
 
 const skipPrevious = () => {
@@ -325,16 +326,68 @@ const skipPrevious = () => {
     return `${m}:${s < 10 ? "0" : ""}${s}`;
   };
 
-  const handleToggle = () => {
-    if (!showFavs) {
-      fetchFavourites(); // 👈 fetch only when opening
+  useEffect(() => {
+        const check = async () => {
+          await CheckIsFav();
+          // console.log(idCheck);
+        };
+        check();
+      }, [trackKey , idCheck]);
+  
+    const handleToggle = async () => {
+      // Optimistically flip UI state
+      const nextState = !idCheck;
+      setIdCheck(nextState);
+      if(nextState){
+        await toggleFavourite(trackKey);
+      }
+      else{
+        const favid = favourites[0].id;
+        await fetch(`http://localhost:4444/api/favourites/${favid}/track/${trackKey}`,{
+          method:"DELETE",
+          headers:{"Content-Type":"application-json"}
+        })
+        closePopup();
+        const res = await fetch(`http://localhost:4444/api/favourite/${favid}`);
+        const data = await res.json();
+        setFavourites(data);
+      }
+      // Optionally re-check from backend if needed
+      // const fav = await CheckIsFav(trackKey);
+      // setIsFav(fav);
+    };
+  
+  
+  
+    const CheckIsFav = async()=>{
+      const favid = favourites?.[0]?.id;
+      try{
+       const res = await fetch(`http://localhost:4444/api/favourite/${favid}`);
+       const data = await res.json();
+      //  console.log(data);
+       if(data.tracks.find((isfav)=>isfav.trackId === trackKey)){
+        setIdCheck(true);
+       }else{
+        setIdCheck(false);
+       }
+      }catch(err){
+        console.log(err);
+      }
     }
-    setShowFavs(!showFavs);
-  };
     const handleClear = ()=>{
         setResults("");
         inputRef.current.value = null;
     }
+
+    const handleSignOut = async(req,res)=>{
+    await fetch(`http://localhost:4444/api/signout` , {
+      method:"POST"
+    })
+    localStorage.removeItem("token");
+    localStorage.removeItem("userid");
+    localStorage.removeItem("userName");
+    navigate("/");
+  }
 
   return (
     <div className="bg-neutral-900 min-h-screen flex justify-center items-center">
@@ -369,15 +422,16 @@ const skipPrevious = () => {
           </MenuItem>
           <MenuItem>
             <a
-              href="#"
+              href="/showFavourites"
               className="block px-4 py-2 text-sm text-gray-700 data-focus:bg-gray-100 data-focus:text-gray-900 data-focus:outline-hidden"
             >
-              License
+              Favourites
             </a>
           </MenuItem>
-          <form action="#" method="POST">
+          <form>
             <MenuItem>
               <button
+              onClick={handleSignOut}
                 type="submit"
                 className="block w-full px-4 py-2 text-left text-sm text-gray-700 data-focus:bg-gray-100 data-focus:text-gray-900 data-focus:outline-hidden"
               >
@@ -456,7 +510,7 @@ const skipPrevious = () => {
     <li
       key={results.videoId}
       className="p-3 border rounded-lg cursor-pointer hover:bg-gray-100 transition"
-      onClick={() => openPopup(results.videoId)}
+      onClick={() => openPopup(results.videoId , results.videoUrl)}
     >
       <div className="flex">
         {activeSnippet?.albumOfTrack?.coverArt?.sources?.[0]?.url && (
@@ -567,9 +621,9 @@ const skipPrevious = () => {
           {/* Forward */}
           <button
             onClick={skipNext}
-            // disabled={currentIndex === null || queue.length <= 1 || currentIndex >= queue.length - 1}
+            disabled={dashboardSkipControl === false}
             className={`w-12 h-12 flex items-center justify-center rounded-full shadow-lg transition ${
-              currentIndex !== null
+              dashboardSkipControl !== false
                 ? "bg-gray-700 hover:bg-gray-600 text-white"
                 : "bg-gray-800 text-gray-500 cursor-not-allowed"
             }`}
@@ -577,18 +631,18 @@ const skipPrevious = () => {
             <ForwardIcon className="w-6 h-6" />
           </button>
 
-          {/* Favourite */}
-          <button
-            onClick={() => toggleFavourite(activeVideo, activeSnippet)}
-            className={`w-10 h-10 flex items-center justify-center rounded-full shadow-lg transition ${
-              favourites.find((fav) => fav.videoId === activeVideo)
-                ? "bg-red-500 text-white"
-                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-            }`}
-            title="Add to Favourites"
-          >
-            <HeartIcon className="w-5 h-5" />
-          </button>
+         {/* Favourite */}
+                             <button
+                               onClick={handleToggle}
+                               className={`w-10 h-10 flex items-center justify-center rounded-full shadow-lg transition ${
+                                 idCheck
+                                   ? "bg-red-500 text-white"
+                                   : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                               }`}
+                               title="Add to Favourites"
+                             >
+                               <HeartIcon className="w-5 h-5" />
+                             </button>
         </div>
 
         {/* Progress bar */}
